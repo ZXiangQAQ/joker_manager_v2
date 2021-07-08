@@ -1,0 +1,6 @@
+Project = "JManager"
+Version = "No Version Provided"
+Branch = "No Branch Provided"
+CommitId = "No CommitId Provided"
+BuildTime = "No BuildTime Provided"
+AppVersion = f"Project:{Project}\nVersion:f{Version}\nBranch:{Branch}\nCommitId:{CommitId}\nBuildTime:{BuildTime}"

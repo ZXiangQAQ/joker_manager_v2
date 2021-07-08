@@ -1,0 +1,8 @@
+fastapi==0.66.0
+loguru==0.5.3
+pydantic==1.8.2
+python-consul==1.1.0
+requests==2.25.1
+uvicorn==0.14.0
+starlette==0.14.2
+SQLAlchemy==1.4.20
