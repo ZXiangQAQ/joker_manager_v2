@@ -1,6 +1,6 @@
 # joker_manager_v2
 
-重构项目
+重构项目, Python Web + Golang Agent + Vue Frontend
 
 cmd没写，暂时直接拉起来
 ```python
