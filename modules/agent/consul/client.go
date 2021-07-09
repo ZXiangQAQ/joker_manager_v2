@@ -6,6 +6,8 @@ import (
 	"github.com/hashicorp/consul/api"
 	"net/url"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type Client struct {
@@ -79,4 +81,38 @@ func (c *Client) Deregister(ctx context.Context, serviceID string) error {
 	}
 
 	return err
+}
+
+func (c *Client) Service(ctx context.Context, service string, index uint64, passingOnly bool) ([]*ServiceInstance, uint64, error) {
+	opts := &api.QueryOptions{
+		WaitIndex: index,
+		WaitTime:  time.Second * 55,
+	}
+	opts = opts.WithContext(ctx)
+	entries, meta, err := c.cli.Health().Service(service, "", passingOnly, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	var services []*ServiceInstance
+	for _, entry := range entries {
+		var version string
+		for _, tag := range entry.Service.Tags {
+			strs := strings.SplitN(tag, "=", 2)
+			if len(strs) == 2 && strs[0] == "version" {
+				version = strs[1]
+			}
+		}
+		var endpoints []string
+		for _, addr := range entry.Service.TaggedAddresses {
+			endpoints = append(endpoints, addr.Address)
+		}
+		services = append(services, &ServiceInstance{
+			ID:        entry.Service.ID,
+			Name:      entry.Service.Service,
+			Metadata:  entry.Service.Meta,
+			Version:   version,
+			Endpoints: endpoints,
+		})
+	}
+	return services, meta.LastIndex, nil
 }
