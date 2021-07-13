@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/consul/api"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -33,6 +32,8 @@ func (c *Client) Register(ctx context.Context, svc *ServiceInstance) error {
 		addresses[raw.Scheme] = api.ServiceAddress{Address: endpoint, Port: int(port)}
 	}
 
+	svc.Metadata["version"] = svc.Version
+
 	asr := &api.AgentServiceRegistration{
 		ID:              svc.ID,
 		Name:            svc.Name,
@@ -44,7 +45,7 @@ func (c *Client) Register(ctx context.Context, svc *ServiceInstance) error {
 		Checks: []*api.AgentServiceCheck{
 			{
 				TCP:                            fmt.Sprintf("%s:%d", addr, port),
-				Interval:                       "10s",
+				Interval:                       "5s",
 				DeregisterCriticalServiceAfter: "180s",
 			},
 		},
@@ -83,25 +84,19 @@ func (c *Client) Deregister(ctx context.Context, serviceID string) error {
 	return err
 }
 
-func (c *Client) Service(ctx context.Context, service string, index uint64, passingOnly bool) ([]*ServiceInstance, uint64, error) {
+func (c *Client) Service(ctx context.Context, service string, tag string, index uint64, passingOnly bool) ([]*ServiceInstance, uint64, error) {
 	opts := &api.QueryOptions{
 		WaitIndex: index,
 		WaitTime:  time.Second * 55,
 	}
 	opts = opts.WithContext(ctx)
-	entries, meta, err := c.cli.Health().Service(service, "", passingOnly, opts)
+	entries, meta, err := c.cli.Health().Service(service, tag, passingOnly, opts)
 	if err != nil {
 		return nil, 0, err
 	}
 	var services []*ServiceInstance
 	for _, entry := range entries {
 		var version string
-		for _, tag := range entry.Service.Tags {
-			strs := strings.SplitN(tag, "=", 2)
-			if len(strs) == 2 && strs[0] == "version" {
-				version = strs[1]
-			}
-		}
 		var endpoints []string
 		for _, addr := range entry.Service.TaggedAddresses {
 			endpoints = append(endpoints, addr.Address)
@@ -110,6 +105,7 @@ func (c *Client) Service(ctx context.Context, service string, index uint64, pass
 			ID:        entry.Service.ID,
 			Name:      entry.Service.Service,
 			Metadata:  entry.Service.Meta,
+			Tags:      entry.Service.Tags,
 			Version:   version,
 			Endpoints: endpoints,
 		})
